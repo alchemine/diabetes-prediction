@@ -1,16 +1,20 @@
 version: "3.8"
 
-services:
-  compute:
+services: 
+  app:
     build:
       context: .
     hostname: "dev"
     ports:
       - 10022:22
-      - 8501:8501
+      - 8502:8501
       - 8888:8888
     volumes:
       - .:/opt/project
+    environment:
+      - PATH=/root/.local/bin/poetry:$PATH
+    working_dir: /opt/project
+    command: poetry run python -m streamlit run diabetes_prediction/app.py
     privileged: true
     ipc: host
     tty: true

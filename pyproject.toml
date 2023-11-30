@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "diabetes-prediction"
+version = "0.1.0"
+description = "Diabetes Prediction and Analysis"
+authors = ["Dongjin Yoon"]
+readme = "README.md"
+packages = [{include = "diabetes_prediction"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
+streamlit = "1.22"
+scikit-learn = "*"
+pandas = "*"
+seaborn = "*"
+tqdm = "*"
+ipykernel = "^6.26.0"
+missingno = "^0.5.2"
+analysis-tools = "^0.3.2"
+pymongo = "^4.6.0"
+pypdf2 = "^3.0.1"
+pdfminer-six = "^20221105"
+tabula-py = "^2.8.2"
+notebook = "6.5.6"
+jupyterthemes = "^0.20.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
