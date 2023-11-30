@@ -1,14 +1,14 @@
-"""Metadata Dataloader module
+"""Dataloader module
 """
-
 from diabetes_prediction._utils import *
 
 from tabula import read_pdf
 
 
 @T
-def load_metadata(data_id: str, overwrite: bool = False) -> pd.DataFrame:
-    """Load metadata of `data_id`.
+def load_dataset(data_id: str, overwrite: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load dataset for `data_id`.
+    Dataset consists of metadata and data(records).
 
     Args:
         data_id: Data ID.
@@ -16,17 +16,39 @@ def load_metadata(data_id: str, overwrite: bool = False) -> pd.DataFrame:
         overwrite: Whether to overwrite metadata or not.
 
     Returns:
+        Metadata and data.
+    """
+    paths    = PATH.get(data_id)
+    metadata = load_metadata(paths, overwrite)
+    data     = pd.read_csv(paths['data'], dtype=str)
+    return metadata, data
+
+
+@T
+def load_metadata(paths: dict, overwrite: bool) -> pd.DataFrame:
+    """Load metadata for `data_id`.
+
+    Args:
+        paths: Dictionary of paths.
+        overwrite: Whether to overwrite metadata or not.
+
+    Returns:
         Metadata having summary and layout.
     """
-    paths = PATH.get(data_id)
+    # Generate summary and layout
     output_path = paths['metadata']
     if overwrite or not exists(output_path):
         summary  = _get_summary(paths['summary'])
         layout   = _get_layout(paths['layout'], summary)
         metadata = _merge_summary_layout(summary, layout)
-        if overwrite:
-            metadata.to_csv(output_path, index=False)
-    return pd.read_csv(output_path)
+        metadata.to_csv(output_path, index=False)
+    data = pd.read_csv(output_path)
+
+    # Evaluate columns (dictionary or list)
+    for col in ['options', 'keywords']:
+        data[col] = data[col].map(eval)
+
+    return data
 
 
 @T

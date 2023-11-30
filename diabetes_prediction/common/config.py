@@ -33,3 +33,4 @@ class PATH:
 class PARAMS:
     figsize = (28, 4)
     seed    = 42
+    target  = 'DIBEV1'

@@ -14,7 +14,7 @@ services:
     environment:
       - PATH=/root/.local/bin/poetry:$PATH
     working_dir: /opt/project
-    command: poetry run python -m streamlit run diabetes_prediction/app.py
+#    command: poetry run python -m streamlit run diabetes_prediction/app.py
     privileged: true
     ipc: host
     tty: true
