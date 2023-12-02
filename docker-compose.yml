@@ -5,6 +5,7 @@ services:
     build:
       context: .
     hostname: "dev"
+    restart: always
     ports:
       - 10022:22
       - 8502:8501
@@ -15,6 +16,7 @@ services:
       - PATH=/root/.local/bin/poetry:$PATH
     working_dir: /opt/project
 #    command: poetry run python -m streamlit run diabetes_prediction/app.py
+    command: poetry run jupyter notebook
     privileged: true
     ipc: host
     tty: true

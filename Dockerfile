@@ -10,3 +10,7 @@ COPY poetry.lock pyproject.toml /opt/project/
 # install python environment
 RUN poetry env use python3.9 && \
     poetry install --no-root
+
+# jupyter notebook
+RUN poetry run /opt/docker/context/package/jupyter/apply_config.sh && \
+    poetry run /opt/docker/context/package/jupyter/jupytertheme.sh
