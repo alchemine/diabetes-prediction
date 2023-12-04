@@ -61,7 +61,7 @@ def select_dataset():
     sample_adult = pd.read_feather(PATH.sample_adult_final_data)
 
     data = pd.merge(sample_adult, family, how='left', on='family_id')
-    data = data[data['label'].isin([0, 1])]
+    data = data[data['label'][0, 1])]
     meta = pd.concat([metas['family'], metas['sample_adult']])
     return data, meta
 

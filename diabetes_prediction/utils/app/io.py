@@ -101,14 +101,3 @@ def show_categorical_features(metas, datas, data_id):
 def get_description(meta, final_ids):
     final_ids = [id for id in final_ids if id in meta['final_id'].values]
     return meta.set_index('final_id').loc[final_ids][['description', 'options', 'keywords']]
-
-def get_corr(data):
-    assert 'label' in data, "Data should have 'label' column"
-
-    C = data.select_dtypes('number').corr()
-    corr = pd.DataFrame([C['label'], C['label'].abs()], index=['corr', 'corr_abs']).T
-    corr.sort_values('corr_abs', ascending=False, inplace=True)
-    corr = corr.iloc[1:]
-    corr['importance'] = corr['corr_abs'].cumsum()/corr['corr_abs'].cumsum().sum()
-    return corr
-

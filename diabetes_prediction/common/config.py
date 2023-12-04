@@ -6,8 +6,9 @@ from diabetes_prediction.common.env import *
 
 class PATH:
     root   = abspath(dirname(dirname(dirname(__file__))))
-    data   = join(root, 'data')
     script = join(root, 'script')
+    data   = join(root, 'data')
+    proc   = join(data, "processed")
 
     family        = join(data, "familyxx", "familyxx")
     household     = join(data, "househld", "househld")
@@ -26,8 +27,17 @@ class PATH:
         rst['layout']     = f"{src}_layout.pdf"
         rst['metadata']   = f"{src}_metadata.csv"
         rst['data']       = f"{src}.csv"
-        rst['final_data'] = f"{src}_final.ftr"
         return rst
+
+    @classmethod
+    def get_proc(cls):
+        return {
+            'data': join(cls.proc, "data.csv"),
+            'metadata': join(cls.proc, "metadata.csv"),
+            'train': join(cls.proc, "train.ftr"),
+            'val': join(cls.proc, "val.ftr"),
+            'test': join(cls.proc, "test.ftr")
+        }
 
 
 class PARAMS:

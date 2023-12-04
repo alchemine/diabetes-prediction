@@ -22,6 +22,8 @@ pdfminer-six = "^20221105"
 tabula-py = "^2.8.2"
 notebook = "6.5.6"
 jupyterthemes = "^0.20.0"
+patsy = "^0.5.4"
+statsmodels = "^0.14.0"
 
 [build-system]
 requires = ["poetry-core"]

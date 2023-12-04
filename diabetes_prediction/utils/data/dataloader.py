@@ -1,8 +1,11 @@
 """Dataloader module
 """
+
 from diabetes_prediction._utils import *
+from diabetes_prediction.utils.data.preprocessing import *
 
 from tabula import read_pdf
+from sklearn.model_selection import train_test_split
 
 
 @T
@@ -42,13 +45,7 @@ def load_metadata(paths: dict, overwrite: bool) -> pd.DataFrame:
         layout   = _get_layout(paths['layout'], summary)
         metadata = _merge_summary_layout(summary, layout)
         metadata.to_csv(output_path, index=False)
-    data = pd.read_csv(output_path)
-
-    # Evaluate columns (dictionary or list)
-    for col in ['options', 'keywords']:
-        data[col] = data[col].map(eval)
-
-    return data
+    return read_metadata(output_path)
 
 
 @T
@@ -217,3 +214,119 @@ def _merge_summary_layout(summary, layout):
     # 7. Select columns
     cols = ['question_id', 'final_id', 'description', 'options', 'keywords']
     return data[cols]
+
+
+@T
+def load_merged_datas(metadatas:dict, datas: dict, overwrite: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Merge multiple DataFrames into one DataFrame using `family_id`.
+    See details in diabetes_prediction.utils.data.preprocessing.extract_family_id().
+
+    Args:
+        metadatas: Dictionary of metadata.
+        datas: Dictionary of data.
+        overwrite: Whether to overwrite metadata or not.
+
+    Returns:
+        Merged metadata and data DataFrame.
+    """
+    paths = PATH.get_proc()
+    if not exists(paths['data']) or overwrite:
+        family       = copy(datas['family'])
+        sample_adult = copy(datas['sample_adult'])
+
+        # 1. Extract family_id
+        extract_family_id(family)
+        extract_family_id(sample_adult)
+
+        # 2. Remove redundant columns
+        cols = ['FMX', 'HHX', 'SRVY_YR', 'RECTYPE']
+        family.drop(columns=cols, inplace=True)
+        sample_adult.drop(columns=cols, inplace=True)
+
+        # 3. Join datas
+        metadata = pd.concat([metadatas['family'], metadatas['sample_adult']])
+        metadata = metadata.drop_duplicates(subset=['final_id'])
+        data     = pd.merge(sample_adult, family, how='left', on='family_id').drop(columns='family_id')
+
+        # 4. Save
+        os.makedirs(PATH.proc, exist_ok=True)
+        metadata.to_csv(paths['metadata'], index=False)
+        data.to_csv(paths['data'], index=False)
+
+    # 5. Load
+    metadata = read_metadata(paths['metadata'])
+    data     = pd.read_csv(paths['data'])
+    return metadata, data
+
+
+@T
+def split_data(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -> dict:
+    """Split data into dataset with train, validation, test set.
+
+    Args:
+        data_: Data records.
+        drop_unknown: Whether to drop records with unknown label or not.
+        test_size: Proportion of test set.
+
+    Returns:
+        Dataset with train, validation, test set.
+    """
+    def _drop_unknown_label_rows(data: pd.DataFrame, target: str) -> pd.DataFrame:
+        """Drop records with unknown label.
+
+        Args:
+            data: Data records.
+            target: Target column name.
+
+        Returns:
+            Data records without unknown label.
+        """
+        data[target] = data[target].astype(int)
+        unknown_idxs = data[~data[target].isin([1, 2])].index
+        print(f"Remove records with unknown label ({len(unknown_idxs)} records from {len(data)} records).")
+        data.drop(unknown_idxs, inplace=True)
+
+
+    if not drop_unknown:
+        raise ValueError(f"Invalid drop_unknown: {drop_unknown}. drop_unknown should be True.")
+
+    data   = copy(data_)
+    target = PARAMS.target
+
+    # 1. Remove records with unknown label
+    _drop_unknown_label_rows(data, target)
+
+    # 2. Split data
+    train_val_data, test_data = train_test_split(data, test_size=test_size, stratify=data[target], random_state=PARAMS.seed)
+    train_data, val_data = train_test_split(train_val_data, test_size=test_size, stratify=train_val_data[target], random_state=PARAMS.seed)
+
+    # 3. Clean index
+    train_data.reset_index(drop=True, inplace=True)
+    val_data.reset_index(drop=True, inplace=True)
+    test_data.reset_index(drop=True, inplace=True)
+
+    return dict(train=train_data, val=val_data, test=test_data)
+
+
+@T
+def load_processed_dataset(metadata: pd.DataFrame = None, dataset: dict = None, overwrite: bool = False) -> dict:
+    """Preprocess and load processed dataset.
+
+    Args:
+        metadata: Metadata.
+        dataset: Dataset with train, validation, test set.
+        overwrite: Whether to overwrite processed dataset or not.
+
+    Returns:
+        Preprocessed dataset.
+    """
+    paths = PATH.get_proc()
+    if not exists(paths['test']) or overwrite:
+        pp = Preprocessor(metadata)
+        dataset_proc = {}
+        dataset_proc['train'] = pp.fit_transform(dataset['train'])
+        dataset_proc['val']   = pp.transform(dataset['val'])
+        dataset_proc['test']  = pp.transform(dataset['test'])
+        for key, data in dataset_proc.items():
+            data.to_feather(paths[key])
+    return {key: pd.read_feather(paths[key]) for key in ('train', 'val', 'test')}

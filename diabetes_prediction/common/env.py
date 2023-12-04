@@ -10,6 +10,7 @@ import re
 import subprocess
 from collections import defaultdict
 from copy import deepcopy as copy
+import warnings
 
 # External libraries
 import numpy as np
@@ -28,3 +29,6 @@ pd.set_option('display.max_colwidth', None)
 
 plt.rc('axes', unicode_minus=False)
 plt.style.use('ggplot')
+
+# ignore warnings
+warnings.filterwarnings('ignore')

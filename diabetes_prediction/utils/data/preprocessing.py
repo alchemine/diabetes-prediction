@@ -1,109 +1,10 @@
 """Data preprocessing module
 """
+
 from diabetes_prediction._utils import *
 
-from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler
-
-
-@T
-def merge_datas(metadatas:dict, datas: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Merge multiple DataFrames into one DataFrame using `family_id`.
-        See details in diabetes_prediction.utils.data.preprocessing.extract_family_id().
-
-    Args:
-        metadatas: Dictionary of metadata.
-        datas: Dictionary of data.
-
-    Returns:
-        Merged metadata and data DataFrame.
-    """
-    family       = copy(datas['family'])
-    sample_adult = copy(datas['sample_adult'])
-
-    # 1. Extract family_id
-    extract_family_id(family)
-    extract_family_id(sample_adult)
-
-    # 2. Remove redundant columns
-    cols = ['FMX', 'HHX', 'SRVY_YR', 'RECTYPE']
-    family.drop(columns=cols, inplace=True)
-    sample_adult.drop(columns=cols, inplace=True)
-
-    # 3. Join datas
-    metadata = pd.concat([metadatas['family'], metadatas['sample_adult']])
-    metadata = metadata.drop_duplicates(subset=['final_id'])
-    data     = pd.merge(sample_adult, family, how='left', on='family_id').drop(columns='family_id')
-    return metadata, data
-
-
-@T
-def split_data(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -> dict:
-    """Split data into dataset with train, validation, test set.
-
-    Args:
-        data_: Data records.
-        drop_unknown: Whether to drop records with unknown label or not.
-        test_size: Proportion of test set.
-
-    Returns:
-        Dataset with train, validation, test set.
-    """
-    def _drop_unknown_label_rows(data: pd.DataFrame, target: str) -> pd.DataFrame:
-        """Drop records with unknown label.
-
-        Args:
-            data: Data records.
-            target: Target column name.
-
-        Returns:
-            Data records without unknown label.
-        """
-        data[target] = data[target].astype(int)
-        unknown_idxs = data[~data[target].isin([1, 2])].index
-        print(f"Remove records with unknown label ({len(unknown_idxs)} records)")
-        return data.drop(unknown_idxs)
-
-    if not drop_unknown:
-        raise ValueError(f"Invalid drop_unknown: {drop_unknown}. drop_unknown should be True.")
-
-    data   = copy(data_)
-    target = PARAMS.target
-
-    # 1. Remove records with unknown label
-    data = _drop_unknown_label_rows(data, target)
-
-    # 2. Split data
-    train_val_data, test_data = train_test_split(data, test_size=test_size, stratify=data[target], random_state=PARAMS.seed)
-    train_data, val_data = train_test_split(train_val_data, test_size=test_size, stratify=train_val_data[target], random_state=PARAMS.seed)
-
-    # 3. Clean index
-    train_data.reset_index(drop=True, inplace=True)
-    val_data.reset_index(drop=True, inplace=True)
-    test_data.reset_index(drop=True, inplace=True)
-
-    return dict(train=train_data, val=val_data, test=test_data)
-
-
-# def preprocess_dataset(metadata: pd.DataFrame, dataset: dict) -> dict:
-#     """Preprocess dataset.
-#
-#     Args:
-#         metadata: Metadata.
-#         dataset: Dataset with train, validation, test set.
-#
-#     Returns:
-#         Preprocessed dataset.
-#     """
-#     pp = Preprocessor(metadata)
-#
-#     dataset_proc = {}
-#     dataset_proc['train'] = pp.fit_transform(dataset['train'])
-#     dataset_proc['val']   = pp.transform(dataset['val'])
-#     dataset_proc['test']  = pp.transform(dataset['test'])
-#
-#     return dataset_proc
 
 
 class Preprocessor(BaseEstimator, TransformerMixin):
@@ -232,7 +133,8 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
             # Manual filtering
             # Append features
-            num_features_app  = [col for col in ('ASISAD', 'ASIMUCH') if col in data]
+            num_features_app  = [PARAMS.target]  # drop unknown options -> binary label (yes or no)
+            num_features_app += [col for col in ('ASISAD', 'ASIMUCH') if col in data]
             for words in ("how satisfied", "total number", "get sick or have accident", "days 5+/4+ drinks", "alcohol drinking", "strength activity", "freq ", "work status", "confidence", "time since", "received calls", "cost of", "education of", "total combined", "ratio of", "how difficult", "duration of", "agree/disagree", "length", "how worried", "how often", "how long", "time ago", "most recent", "year of", "time period", "degree of difficulty", "diff ", "frequency"):
                 num_features_app += [col for col in data if get_meta_values(meta, col)['description'].startswith(words)]
             for final_id in ("RPAP", "HEAR_", "COG_"):
@@ -320,19 +222,8 @@ class Preprocessor(BaseEstimator, TransformerMixin):
     @T
     def _standardize(self, data):
         """Standardize numerical features"""
-        num_features = data.select_dtypes('number').columns
+        num_features = data.select_dtypes('number').columns.drop(PARAMS.target)
         if self.fit:
             self.params['std_scaler'] = StandardScaler()
             self.params['std_scaler'].fit(data[num_features])
         data[num_features] = self.params['std_scaler'].transform(data[num_features])
-
-
-@T
-def extract_family_id(data: pd.DataFrame) -> None:
-    """Extract and append column `family_id` using `HHX`, `FMX`, `SRVY_YR`.
-    FMX: Use this variable in combination with HHX and SRVY_YR(constant, 2018) to identify individual families.
-
-    Args:
-        data: Data records.
-    """
-    data['family_id'] = data['HHX'] + data['FMX'] + data['SRVY_YR']

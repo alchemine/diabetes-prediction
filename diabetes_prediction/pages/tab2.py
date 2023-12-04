@@ -7,7 +7,7 @@ from diabetes_prediction.utils.data.preprocessing import *
 
 
 def _compare_datas(before, after, meta, cols, title):
-    df_desc = meta[meta['final_id'].isin(cols)].drop(columns=['question_id', 'keywords'])
+    df_desc = meta[meta['final_id']cols)].drop(columns=['question_id', 'keywords'])
 
     fig, axes = plt.subplots(2, 5, figsize=PARAMS.figsize)
     fig.suptitle(title, fontsize=15)

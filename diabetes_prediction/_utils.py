@@ -21,3 +21,41 @@ def get_meta_values(meta, col):
 def get_unknown_value(meta, col):
     options_inversed = inverse_dict(get_meta_values(meta, col)['options'])
     return options_inversed['unknown']
+
+
+def read_metadata(path: str) -> pd.DataFrame:
+    """Read metadata and evaluate columns (dictionary or list).
+
+    Args:
+        path: Path to metadata.
+
+    Returns:
+        Metadata.
+    """
+    metadata = pd.read_csv(path)
+    for col in ('options', 'keywords'):
+        metadata[col] = metadata[col].map(eval)
+    return metadata
+
+
+def extract_family_id(data: pd.DataFrame) -> None:
+    """Extract and append column `family_id` using `HHX`, `FMX`, `SRVY_YR`.
+    FMX: Use this variable in combination with HHX and SRVY_YR(constant, 2018) to identify individual families.
+
+    Args:
+        data: Data records.
+    """
+    data['family_id'] = data['HHX'] + data['FMX'] + data['SRVY_YR']
+
+
+def merge_features_metadata(features: pd.Index, metadata: pd.DataFrame) -> pd.DataFrame:
+    """Merge features and metadata.
+
+    Args:
+        features: Features.
+        metadata: Metadata.
+
+    Returns:
+        Data records with metadata.
+    """
+    return pd.merge(pd.DataFrame(features, columns=['final_id']), metadata, how='left', on='final_id')
