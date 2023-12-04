@@ -4,6 +4,7 @@ from diabetes_prediction._utils import *
 
 from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import StandardScaler
 
 
 @T
@@ -38,11 +39,11 @@ def merge_datas(metadatas:dict, datas: dict) -> tuple[pd.DataFrame, pd.DataFrame
 
 
 @T
-def split_data(data: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -> dict:
+def split_data(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -> dict:
     """Split data into dataset with train, validation, test set.
 
     Args:
-        data: Data records.
+        data_: Data records.
         drop_unknown: Whether to drop records with unknown label or not.
         test_size: Proportion of test set.
 
@@ -66,10 +67,12 @@ def split_data(data: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -
 
     if not drop_unknown:
         raise ValueError(f"Invalid drop_unknown: {drop_unknown}. drop_unknown should be True.")
+
+    data   = copy(data_)
     target = PARAMS.target
 
     # 1. Remove records with unknown label
-    _drop_unknown_label_rows(data, target)
+    data = _drop_unknown_label_rows(data, target)
 
     # 2. Split data
     train_val_data, test_data = train_test_split(data, test_size=test_size, stratify=data[target], random_state=PARAMS.seed)
@@ -83,24 +86,24 @@ def split_data(data: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -
     return dict(train=train_data, val=val_data, test=test_data)
 
 
-def preprocess_dataset(metadata: pd.DataFrame, dataset: dict) -> dict:
-    """Preprocess dataset.
-
-    Args:
-        metadata: Metadata.
-        dataset: Dataset with train, validation, test set.
-
-    Returns:
-        Preprocessed dataset.
-    """
-    pp = Preprocessor(metadata)
-
-    dataset_proc = {}
-    dataset_proc['train'] = pp.fit_transform(dataset['train'])
-    dataset_proc['val']   = pp.transform(dataset['val'])
-    dataset_proc['test']  = pp.transform(dataset['test'])
-
-    return dataset_proc
+# def preprocess_dataset(metadata: pd.DataFrame, dataset: dict) -> dict:
+#     """Preprocess dataset.
+#
+#     Args:
+#         metadata: Metadata.
+#         dataset: Dataset with train, validation, test set.
+#
+#     Returns:
+#         Preprocessed dataset.
+#     """
+#     pp = Preprocessor(metadata)
+#
+#     dataset_proc = {}
+#     dataset_proc['train'] = pp.fit_transform(dataset['train'])
+#     dataset_proc['val']   = pp.transform(dataset['val'])
+#     dataset_proc['test']  = pp.transform(dataset['test'])
+#
+#     return dataset_proc
 
 
 class Preprocessor(BaseEstimator, TransformerMixin):
@@ -116,7 +119,7 @@ class Preprocessor(BaseEstimator, TransformerMixin):
     """
     def __init__(self, meta: pd.DataFrame) -> None:
         self.meta   = meta
-        self.params = defaultdict(dict)
+        self.params = {}
         self.fit    = None
 
     @T
@@ -146,16 +149,17 @@ class Preprocessor(BaseEstimator, TransformerMixin):
         self.fit = False
         return self._process(X)
 
-    def _process(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _process(self, data_: pd.DataFrame) -> pd.DataFrame:
         """Process data records.
 
         Args:
-            data: Data records.
+            data_: Data records.
 
         Returns:
             Processed data records.
         """
         meta = self.meta
+        data = copy(data_)
 
         # Replace options and impute
         self._replace_ambiguous_options(data, meta)
@@ -178,15 +182,19 @@ class Preprocessor(BaseEstimator, TransformerMixin):
         # Except diabetes-relevant columns
         self._drop_diabetes_columns(data, meta)
 
+        # Standardize numerical features
+        self._standardize(data)
+
         return data
 
     @T
     def _replace_ambiguous_options(self, data, meta):
-        # Replace ambiguous options into 'unknown`
-        #  don't know
-        #  not ascertained
-        #  refused
-        #  etc
+        """Replace ambiguous options into 'unknown`
+        - don't know
+        - not ascertained
+        - refused
+        - etc
+        """
         replacement_map = {src: "unknown" for src in ("don't know", "don’t know", "not ascertained", "refused", "not available", "time period format", "undefined", "undefinable")}
 
         for col in data:
@@ -203,12 +211,9 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
     @T
     def _impute_data(self, data, meta):
-        # Impute nan values with 'unknown' value
+        """Impute nan values with 'unknown' value"""
         for col in data:
-            options_inversed = inverse_dict(get_meta_values(meta, col)['options'])
-            data[col] = data[col].fillna(options_inversed['unknown'])
-            # imputer = SimpleImputer(strategy='constant', fill_value=options_inversed['unknown'])
-            # data[[col]] = imputer.fit_transform(data[[col]])
+            data[col] = data[col].fillna(get_unknown_value(meta, col))
 
     @T
     def _set_dtypes(self, data, meta):
@@ -251,12 +256,14 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
     @T
     def _impute_numerical_features(self, data, meta):
-        # Fill numeric unknown values with mode (zero-centered or long tailed distribution)
+        """Fill numeric unknown values with mode (zero-centered or long tailed distribution)"""
         for col in data.select_dtypes('number').columns:
             data[col] = data[col].replace(float(get_unknown_value(meta, col)), None)
             if self.fit:
-                mode = data[col].mode()[0]
-                self.params['mode'][col] = mode
+                if 'mode' not in self.params:
+                    self.params['mode'] = {}
+                self.params['mode'][col] = data[col].mode()[0]
+                mode = self.params['mode'][col]
             else:
                 if col in self.params['mode']:
                     mode = self.params['mode'][col]
@@ -290,7 +297,7 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
     @T
     def _manual_handling(self, data, meta):
-        # Handle 'do nothing' options
+        """Handle 'do nothing' options"""
         for col in data:
             if col in (PARAMS.target, 'family_id'):
                 continue
@@ -303,16 +310,23 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
     @T
     def _drop_diabetes_columns(self, data, meta):
-        # Drop columns which have diabetes keywords
+        """Drop columns which have diabetes keywords except target"""
         idxs = meta['keywords'].astype(str).str.contains('diabetes')
         diabetes_cols = meta.loc[idxs[idxs].index, 'final_id']
         diabetes_cols = [col for col in diabetes_cols if col in data]
+        diabetes_cols.remove(PARAMS.target)
         data.drop(columns=diabetes_cols, inplace=True)
 
+    @T
+    def _standardize(self, data):
+        """Standardize numerical features"""
+        num_features = data.select_dtypes('number').columns
+        if self.fit:
+            self.params['std_scaler'] = StandardScaler()
+            self.params['std_scaler'].fit(data[num_features])
+        data[num_features] = self.params['std_scaler'].transform(data[num_features])
 
-# --------------------------------------------------
-# Utility functions
-# --------------------------------------------------
+
 @T
 def extract_family_id(data: pd.DataFrame) -> None:
     """Extract and append column `family_id` using `HHX`, `FMX`, `SRVY_YR`.
