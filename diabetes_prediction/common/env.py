@@ -15,11 +15,10 @@ import warnings
 # External libraries
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# from analysis_tools import eda
 
 
 # Options
@@ -29,6 +28,7 @@ pd.set_option('display.max_colwidth', None)
 
 plt.rc('axes', unicode_minus=False)
 plt.style.use('ggplot')
+
 
 # ignore warnings
 warnings.filterwarnings('ignore')

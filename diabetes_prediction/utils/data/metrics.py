@@ -32,7 +32,6 @@ def get_corr(metadata: pd.DataFrame, data: pd.DataFrame) -> pd.DataFrame:
 
     # Merge with metadata
     corr = pd.merge(corr, metadata.set_index('final_id'), how='left', on='final_id')
-    corr = corr.sort_values('corr_abs', ascending=False)
     return corr[['corr_abs', 'description', 'options']]
 
 
@@ -57,7 +56,8 @@ def get_VIF(data: pd.DataFrame, plot: bool = False) -> pd.DataFrame:
         rst['VIF'] = compute(*tasks, scheduler='processes')
 
     if plot:
-        rst.plot.bar(figsize=PARAMS.figsize)
+        ax = rst.plot.bar(figsize=PARAMS.figsize)
+        ax.axhline(5, color='k')  # VIF base: 5 or 10
     return rst
 
 
@@ -76,5 +76,5 @@ def plot_correlations(data, vif_data, cols):
     mask[(corr < 0.25) | (corr == 1)] = True
     sns.heatmap(corr, mask=mask, cmap='coolwarm', annot=True, fmt='.1f', center=0, ax=axes[0], cbar=False)
 
-    vif_data.plot.bar(ax=axes[1], ylabel='VIF')
+    vif_data.plot.bar(ax=axes[1], legend=True)
     axes[1].axhline(5, color='k')

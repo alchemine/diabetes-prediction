@@ -260,13 +260,13 @@ def load_merged_datas(metadatas:dict, datas: dict, overwrite: bool = False) -> t
 
 
 @T
-def split_data(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) -> dict:
+def split_dataset(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.2) -> dict:
     """Split data into dataset with train, validation, test set.
 
     Args:
         data_: Data records.
         drop_unknown: Whether to drop records with unknown label or not.
-        test_size: Proportion of test set.
+        test_size: Proportion of test and validation set.
 
     Returns:
         Dataset with train, validation, test set.
@@ -298,12 +298,17 @@ def split_data(data_: pd.DataFrame, drop_unknown: bool, test_size: float = 0.3) 
 
     # 2. Split data
     train_val_data, test_data = train_test_split(data, test_size=test_size, stratify=data[target], random_state=PARAMS.seed)
-    train_data, val_data = train_test_split(train_val_data, test_size=test_size, stratify=train_val_data[target], random_state=PARAMS.seed)
+    train_data, val_data = train_test_split(train_val_data, test_size=len(test_data), stratify=train_val_data[target], random_state=PARAMS.seed)
 
     # 3. Clean index
     train_data.reset_index(drop=True, inplace=True)
     val_data.reset_index(drop=True, inplace=True)
     test_data.reset_index(drop=True, inplace=True)
+
+    print("Split dataset into train, validation, test set.")
+    print("- Train set:", len(train_data))
+    print("- Validation set:", len(val_data))
+    print("- Test set:", len(test_data))
 
     return dict(train=train_data, val=val_data, test=test_data)
 

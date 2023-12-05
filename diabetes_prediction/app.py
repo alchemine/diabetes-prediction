@@ -145,7 +145,7 @@ with tabs[3]:
     dataset = split_dataset(data)
 
     st.header("2. Logistic Regression (10 Folds Soft Voting Ensemble)")
-    show_logstic_regression(data, meta, dataset)
+    show_logistic_regression(data, meta, dataset)
 
     st.header("3. Random Forest Classifier (10 Folds Soft Voting Ensemble)")
     show_random_forest_classifier(meta, dataset)

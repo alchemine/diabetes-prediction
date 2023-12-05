@@ -61,30 +61,31 @@ def select_dataset():
     sample_adult = pd.read_feather(PATH.sample_adult_final_data)
 
     data = pd.merge(sample_adult, family, how='left', on='family_id')
-    data = data[data['label'][0, 1])]
+    data = data[data['label'].isin([0, 1])]
     meta = pd.concat([metas['family'], metas['sample_adult']])
     return data, meta
 
-def split_dataset(data):
-    train_val_data, test_data = train_test_split(data, test_size=0.4, stratify=data['label'], random_state=PARAMS.seed)
-    train_val_data.reset_index(drop=True, inplace=True)
 
-    X_tv = train_val_data.drop(columns='label')
-    y_tv = train_val_data['label']
+# def split_dataset(data):
+#     train_val_data, test_data = train_test_split(data, test_size=0.4, stratify=data['label'], random_state=PARAMS.seed)
+#     train_val_data.reset_index(drop=True, inplace=True)
+#
+#     X_tv = train_val_data.drop(columns='label')
+#     y_tv = train_val_data['label']
+#
+#     X_test = test_data.drop(columns='label')
+#     y_test = test_data['label']
+#
+#     with st_stdout("code"):
+#         print(f"Train + validation data: {len(train_val_data)}")
+#         print(f"Test data: {len(test_data)}")
+#
+#     return dict(
+#         X_tv=X_tv, y_tv=y_tv,
+#         X_test=X_test, y_test=y_test
+#     )
 
-    X_test = test_data.drop(columns='label')
-    y_test = test_data['label']
-
-    with st_stdout("code"):
-        print(f"Train + validation data: {len(train_val_data)}")
-        print(f"Test data: {len(test_data)}")
-
-    return dict(
-        X_tv=X_tv, y_tv=y_tv,
-        X_test=X_test, y_test=y_test
-    )
-
-def show_logstic_regression(data, meta, dataset):
+def show_logistic_regression(data, meta, dataset):
     n_cols  = 30
     corr    = get_corr(data)
     df_desc = get_description(meta, corr.index[:n_cols])

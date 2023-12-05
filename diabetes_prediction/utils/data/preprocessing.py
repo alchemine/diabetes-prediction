@@ -4,7 +4,7 @@
 from diabetes_prediction._utils import *
 
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 
 class Preprocessor(BaseEstimator, TransformerMixin):
@@ -85,6 +85,9 @@ class Preprocessor(BaseEstimator, TransformerMixin):
 
         # Standardize numerical features
         self._standardize(data)
+
+        # Label Encoding
+        self._label_encoding(data)
 
         return data
 
@@ -222,8 +225,16 @@ class Preprocessor(BaseEstimator, TransformerMixin):
     @T
     def _standardize(self, data):
         """Standardize numerical features"""
-        num_features = data.select_dtypes('number').columns.drop(PARAMS.target)
+        num_features = data.select_dtypes('number').columns.drop(PARAMS.target)  # except target
         if self.fit:
             self.params['std_scaler'] = StandardScaler()
             self.params['std_scaler'].fit(data[num_features])
         data[num_features] = self.params['std_scaler'].transform(data[num_features])
+
+    @T
+    def _label_encoding(self, data):
+        """Encode label into [0, 1]"""
+        if self.fit:
+            self.params['label_encoder'] = LabelEncoder()
+            self.params['label_encoder'].fit(data[PARAMS.target])
+        data[PARAMS.target] = self.params['label_encoder'].transform(data[PARAMS.target])
