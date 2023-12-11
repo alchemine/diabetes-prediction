@@ -23,8 +23,8 @@ def get_unknown_value(meta, col):
     return options_inversed['unknown']
 
 
-def read_metadata(path: str) -> pd.DataFrame:
-    """Read metadata and evaluate columns (dictionary or list).
+def load_metadata(path: str) -> pd.DataFrame:
+    """Load metadata and evaluate columns (dictionary or list).
 
     Args:
         path: Path to metadata.

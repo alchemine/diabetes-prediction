@@ -19,7 +19,7 @@ class Preprocessor(BaseEstimator, TransformerMixin):
         fit: Whether to fit or not.
     """
     def __init__(self, meta: pd.DataFrame) -> None:
-        self.meta   = meta
+        self.meta   = copy(meta)
         self.params = {}
         self.fit    = None
 
@@ -112,6 +112,14 @@ class Preprocessor(BaseEstimator, TransformerMixin):
             # 3. Replace words with options (restore)
             options_inversed = inverse_dict(options)           # {'yes': '1', 'no': '2', 'don\'t know': '3', 'not ascertained': '4', 'refused': '5', 'unknown': '-1'}
             data[col] = data[col].replace(options_inversed)
+
+        if self.fit:
+            # 4. Update metadata
+            for col in data:
+                options = get_meta_values(meta, col)['options']
+                updated_options = {key: val for key, val in options.items() if val not in replacement_map}
+                meta.loc[meta['final_id'] == col, 'options'] = json.dumps(updated_options)
+            meta['options'] = meta['options'].map(lambda v: eval(v) if isinstance(v, str) else v)
 
     @T
     def _impute_data(self, data, meta):
@@ -238,3 +246,7 @@ class Preprocessor(BaseEstimator, TransformerMixin):
             self.params['label_encoder'] = LabelEncoder()
             self.params['label_encoder'].fit(data[PARAMS.target])
         data[PARAMS.target] = self.params['label_encoder'].transform(data[PARAMS.target])
+
+    def get_metadata(self):
+        """Get metadata"""
+        return self.meta

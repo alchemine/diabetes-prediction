@@ -56,25 +56,29 @@ def get_VIF(data: pd.DataFrame, plot: bool = False) -> pd.DataFrame:
         rst['VIF'] = compute(*tasks, scheduler='processes')
 
     if plot:
+        plot_VIF(rst)
         ax = rst.plot.bar(figsize=PARAMS.figsize)
         ax.axhline(5, color='k')  # VIF base: 5 or 10
     return rst
 
+def plot_VIF(data=None):
+    ax = data.plot.bar(legend=None, figsize=PARAMS.figsize)
+    ax.axhline(5, color='k')
+    ax.set_title("Variance Inflation Factor")
 
-def plot_correlations(data, vif_data, cols):
-    data = data[cols]
-    corr = data.corr()
 
-    fig, axes = plt.subplots(2, figsize=(28, 12))
-
+# def plot_corr(data: pd.DataFrame, cols: list = None):
+#     if cols is not None:
+#         data = data[cols]
+#     corr = data.select_dtypes('number').corr()
+#
+#     correlation matrix
+#     fig, ax = plt.subplots(figsize=PARAMS.figsize)
+#     ax.set_title(f"Correlation Matrix (C ≥ 0.4, max: {np.max(corr[corr != 1]):.2f})")
 #     mask = np.zeros_like(corr)
-#     mask[np.triu_indices_from(mask)] = True
-#     sns.heatmap(corr, mask=mask, cmap='coolwarm', annot=True, fmt='.1f', center=0, ax=axes[0], cbar=False)
-
-    axes[0].set_title("Correlation Matrix (C ≥ 0.25)")
-    mask = np.zeros_like(corr)
-    mask[(corr < 0.25) | (corr == 1)] = True
-    sns.heatmap(corr, mask=mask, cmap='coolwarm', annot=True, fmt='.1f', center=0, ax=axes[0], cbar=False)
-
-    vif_data.plot.bar(ax=axes[1], legend=True)
-    axes[1].axhline(5, color='k')
+#     mask[(corr < 0.4) | (corr == 1)] = True
+#     sns.heatmap(corr, mask=mask, cmap='coolwarm', annot=True, fmt='.1f', center=0, ax=ax, cbar=False)
+#
+#     # mask = np.zeros_like(corr)
+#     # mask[np.triu_indices_from(mask)] = True
+#     # sns.heatmap(corr, mask=mask, cmap='coolwarm', annot=True, fmt='.1f', center=0, ax=ax, cbar=False)

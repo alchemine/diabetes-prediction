@@ -32,11 +32,15 @@ class PATH:
     @classmethod
     def get_proc(cls):
         return {
-            'data': join(cls.proc, "data.csv"),
-            'metadata': join(cls.proc, "metadata.csv"),
+            # before preprocessing
+            'raw_data': join(cls.proc, "raw_data.csv"),
+            'raw_metadata': join(cls.proc, "raw_metadata.csv"),
+
+            # after preprocessing
             'train': join(cls.proc, "train.ftr"),
             'val': join(cls.proc, "val.ftr"),
-            'test': join(cls.proc, "test.ftr")
+            'test': join(cls.proc, "test.ftr"),
+            'metadata': join(cls.proc, "metadata.csv")
         }
 
 

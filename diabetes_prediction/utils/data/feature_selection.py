@@ -77,9 +77,9 @@ class CorrelationXFeatureSelector(FeatureSelector):
         return self.thresholds.index[self.thresholds <= threshold]
 
 
-class CorrelationXYFeatureSelector(FeatureSelector):
+class CollinearityFeatureSelector(FeatureSelector):
     def __init__(self, metadata: pd.DataFrame, data: pd.DataFrame) -> None:
-        """Correlation feature selector.
+        """Collinearity feature selector.
 
         Args:
             metadata: Metadata.

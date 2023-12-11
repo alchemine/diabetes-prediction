@@ -22,14 +22,14 @@ def load_dataset(data_id: str, overwrite: bool = False) -> tuple[pd.DataFrame, p
         Metadata and data.
     """
     paths    = PATH.get(data_id)
-    metadata = load_metadata(paths, overwrite)
+    metadata = generate_metadata(paths, overwrite)
     data     = pd.read_csv(paths['data'], dtype=str)
     return metadata, data
 
 
 @T
-def load_metadata(paths: dict, overwrite: bool) -> pd.DataFrame:
-    """Load metadata for `data_id`.
+def generate_metadata(paths: dict, overwrite: bool = False) -> pd.DataFrame:
+    """Generate metadata.
 
     Args:
         paths: Dictionary of paths.
@@ -45,7 +45,7 @@ def load_metadata(paths: dict, overwrite: bool) -> pd.DataFrame:
         layout   = _get_layout(paths['layout'], summary)
         metadata = _merge_summary_layout(summary, layout)
         metadata.to_csv(output_path, index=False)
-    return read_metadata(output_path)
+    return load_metadata(output_path)
 
 
 @T
@@ -230,7 +230,7 @@ def load_merged_datas(metadatas:dict, datas: dict, overwrite: bool = False) -> t
         Merged metadata and data DataFrame.
     """
     paths = PATH.get_proc()
-    if not exists(paths['data']) or overwrite:
+    if not exists(paths['raw_data']) or overwrite:
         family       = copy(datas['family'])
         sample_adult = copy(datas['sample_adult'])
 
@@ -250,12 +250,12 @@ def load_merged_datas(metadatas:dict, datas: dict, overwrite: bool = False) -> t
 
         # 4. Save
         os.makedirs(PATH.proc, exist_ok=True)
-        metadata.to_csv(paths['metadata'], index=False)
-        data.to_csv(paths['data'], index=False)
+        metadata.to_csv(paths['raw_metadata'], index=False)
+        data.to_csv(paths['raw_data'], index=False)
 
     # 5. Load
-    metadata = read_metadata(paths['metadata'])
-    data     = pd.read_csv(paths['data'])
+    metadata = load_metadata(paths['raw_metadata'])
+    data     = pd.read_csv(paths['raw_data'])
     return metadata, data
 
 
@@ -323,15 +323,23 @@ def load_processed_dataset(metadata: pd.DataFrame = None, dataset: dict = None, 
         overwrite: Whether to overwrite processed dataset or not.
 
     Returns:
-        Preprocessed dataset.
+        Preprocessed dataset and metadata.
     """
     paths = PATH.get_proc()
     if not exists(paths['test']) or overwrite:
         pp = Preprocessor(metadata)
         dataset_proc = {}
-        dataset_proc['train'] = pp.fit_transform(dataset['train'])
-        dataset_proc['val']   = pp.transform(dataset['val'])
-        dataset_proc['test']  = pp.transform(dataset['test'])
-        for key, data in dataset_proc.items():
-            data.to_feather(paths[key])
-    return {key: pd.read_feather(paths[key]) for key in ('train', 'val', 'test')}
+        dataset_proc['train']    = pp.fit_transform(dataset['train'])
+        dataset_proc['metadata'] = pp.get_metadata()
+        dataset_proc['val']      = pp.transform(dataset['val'])
+        dataset_proc['test']     = pp.transform(dataset['test'])
+
+        for key in ('train', 'val', 'test'):
+            dataset_proc[key].to_feather(paths[key])
+        dataset_proc['metadata'].to_csv(paths['metadata'], index=False)
+
+    dataset_proc = {key: pd.read_feather(paths[key]) for key in ('train', 'val', 'test')}
+    dataset_proc['metadata']     = load_metadata(paths['metadata'])
+    dataset_proc['num_features'] = dataset_proc['train'].select_dtypes('number').columns.drop(PARAMS.target).tolist()
+    dataset_proc['cat_features'] = dataset_proc['train'].select_dtypes('object').columns.tolist()
+    return dataset_proc
